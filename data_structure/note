@@ -1,0 +1,507 @@
+## 1️⃣ Qu’est-ce qu’une `union` en C ?
+
+Une **union** est un type de donnée qui peut **contenir plusieurs types différents**,
+👉 **mais un seul à la fois**.
+
+👉 **Tous les membres partagent la même zone mémoire**.
+
+```c
+union Data {
+    uint8_t  u8;
+    uint16_t u16;
+    uint32_t u32;
+};
+```
+## 2️⃣ “The members share the same memory location”
+
+Cela veut dire que :
+
+* `u8`, `u16` et `u32` utilisent **exactement la même adresse mémoire**
+* quand tu écris dans un membre, tu **écrases les autres**
+
+### Exemple
+
+```c
+union Data d;
+
+d.u32 = 0x12345678;
+d.u8  = 0xAA;   // écrase le début de la mémoire
+```
+
+➡️ Après avoir écrit `u8`, la valeur de `u32` **n’est plus valide**.
+
+
+## 3️⃣ “Union is capable of holding different types of data at different times”
+
+✔️ Exact
+Une union peut contenir :
+
+* **un int maintenant**
+* **un float plus tard**
+* **un tableau après**
+
+❌ Mais **pas plusieurs en même temps**.
+
+
+## 4️⃣ “Unions are as large as their largest member”
+
+Très important 💡
+
+### Exemple
+
+```c
+union Example {
+    uint8_t  a;   // 1 byte
+    uint16_t b;   // 2 bytes
+    uint32_t c;   // 4 bytes
+};
+```
+
+➡️ Taille de la union = **4 bytes**
+
+Même si tu utilises seulement `a`.
+
+
+## 5️⃣ L’analogie des livres 📚 (très bonne)
+
+Tu as écrit :
+
+> *union are like a stack of books where only one can be read at a time*
+
+👉 Parfait 👌
+Voici la correspondance :
+
+| Analogie                  | Union                 |
+| ------------------------- | --------------------- |
+| Pile de livres            | Zone mémoire          |
+| Un livre lu               | Un seul membre valide |
+| Changer de livre          | Écraser la mémoire    |
+| Taille du plus gros livre | Taille de la union    |
+
+
+### Exemple avec les livres
+
+```c
+union Book {
+    int    math;
+    float  physics;
+    char   literature[20];
+};
+```
+
+* `literature` est le **plus gros livre**
+* la union aura la taille de `literature`
+* si tu écris `math`, puis `physics` → **math est perdu**
+
+
+## 6️⃣ “Before a book is checked out, it must be loaded into the union”
+
+Ça veut dire :
+
+👉 Avant d’utiliser un membre, **tu dois écrire dedans**
+
+❌ Tu ne peux PAS lire un membre qui n’a pas été écrit avant.
+
+### ❌ Mauvais
+
+```c
+union Data d;
+printf("%d", d.u16); // valeur inconnue
+```
+
+### ✅ Correct
+
+```c
+d.u16 = 100;
+printf("%d", d.u16);
+```
+
+## 7️⃣ “Only one book is valid within the union at a time”
+
+✔️ Exact
+
+Si tu fais :
+
+```c
+d.u32 = 500;
+d.u8  = 10;
+```
+
+➡️ **Seul `u8` est valide maintenant**
+➡️ `u32` contient des données corrompues
+
+
+## 8️⃣ Exemple concret STM32 🚀
+
+### Cas réel : données reçues par UART
+
+Tu reçois 4 octets, mais tu veux parfois les lire comme :
+
+* `uint32_t`
+* `float`
+
+```c
+union UART_Data {
+    uint8_t  bytes[4];
+    uint32_t value;
+    float    fvalue;
+};
+```
+
+```c
+union UART_Data rx;
+
+rx.bytes[0] = 0x00;
+rx.bytes[1] = 0x00;
+rx.bytes[2] = 0x80;
+rx.bytes[3] = 0x3F;
+
+float x = rx.fvalue;  // x = 1.0
+```
+
+➡️ Même mémoire
+➡️ Interprétation différente
+
+
+## 9️⃣ Union + struct (très utilisé)
+
+```c
+typedef union {
+    uint8_t all;
+    struct {
+        uint8_t bit0 : 1;
+        uint8_t bit1 : 1;
+        uint8_t bit2 : 1;
+        uint8_t bit3 : 1;
+        uint8_t bit4 : 1;
+        uint8_t bit5 : 1;
+        uint8_t bit6 : 1;
+        uint8_t bit7 : 1;
+    } bits;
+} Register8_t;
+```
+
+```c
+Register8_t reg;
+
+reg.all = 0x05;
+reg.bits.bit0 = 1;
+```
+
+🔥 Très courant en STM32 pour les registres
+
+
+## 🔟 Résumé simple 🧠
+
+* `union` = **une seule mémoire**
+* plusieurs types possibles
+* **un seul valide à la fois**
+* taille = **plus grand membre**
+* idéale pour :
+
+  * protocoles
+  * registres
+  * économie mémoire
+  * embarqué STM32
+
+######
+
+# ✅ RÈGLE D’OR (à retenir)
+
+👉 **STRUCT** :
+➡️ quand **TOUTES les données existent en même temps**
+
+👉 **UNION** :
+➡️ quand **UNE SEULE donnée est valide à la fois**
+
+---
+
+# 1️⃣ Exemple clair avec la vraie vie
+
+## STRUCT = sac à dos 🎒
+
+Tu peux mettre **tous les objets en même temps**
+
+## UNION = clé USB 💾
+
+Tu peux stocker **un seul fichier à la fois**
+
+---
+
+# 2️⃣ Exemple simple (pas STM32)
+
+## 🟢 STRUCT (tout existe en même temps)
+
+```c
+struct Person {
+    uint8_t age;
+    float   taille;
+    char    sexe;
+};
+```
+
+✔️ âge + taille + sexe existent ensemble
+❌ impossible avec une union
+
+---
+
+## 🔵 UNION (une seule info à la fois)
+
+```c
+union Mesure {
+    int   temperature;
+    float pression;
+};
+```
+
+✔️ soit température
+✔️ soit pression
+❌ jamais les deux en même temps
+
+---
+
+# 3️⃣ STM32 – Cas réel n°1 : capteur
+
+## ❌ Mauvais choix (union)
+
+```c
+union Capteur {
+    uint16_t temperature;
+    uint16_t humidite;
+};
+```
+
+❌ Problème : tu perds une valeur
+
+---
+
+## ✅ Bon choix (struct)
+
+```c
+struct Capteur {
+    uint16_t temperature;
+    uint16_t humidite;
+};
+```
+
+✔️ les deux mesures existent en même temps
+
+---
+
+# 4️⃣ STM32 – Cas réel n°2 : protocole UART
+
+Tu reçois **4 octets**, mais tu peux les interpréter de plusieurs façons.
+
+## ✅ Bon choix : UNION
+
+```c
+union UART_Data {
+    uint8_t  bytes[4];
+    uint32_t value;
+    float    fvalue;
+};
+```
+
+```c
+rx.bytes[0] = 0x00;
+rx.bytes[1] = 0x00;
+rx.bytes[2] = 0x80;
+rx.bytes[3] = 0x3F;
+
+float x = rx.fvalue; // 1.0
+```
+
+✔️ même mémoire
+✔️ interprétation différente
+❌ struct gaspillerait la mémoire
+
+---
+
+# 5️⃣ STM32 – Registre matériel
+
+Un registre peut être vu :
+
+* comme un entier
+* comme des bits
+
+## ✅ UNION + STRUCT (le plus puissant)
+
+```c
+typedef union {
+    uint32_t ALL;
+    struct {
+        uint32_t PIN0 : 1;
+        uint32_t PIN1 : 1;
+        uint32_t PIN2 : 1;
+        uint32_t PIN3 : 1;
+        uint32_t PIN4 : 1;
+        uint32_t PIN5 : 1;
+        uint32_t PIN6 : 1;
+        uint32_t PIN7 : 1;
+        uint32_t RESERVED : 24;
+    } BITS;
+} GPIO_ODR_t;
+```
+
+```c
+GPIO_ODR_t odr;
+
+odr.ALL = 0x20;       // PA5 = 1
+odr.BITS.PIN5 = 0;   // PA5 = 0
+```
+
+🔥 Très utilisé en STM32
+
+---
+
+# 6️⃣ STM32 – Machine d’état (state machine)
+
+## ❌ Mauvais choix (struct)
+
+```c
+struct State {
+    uint8_t IDLE;
+    uint8_t RUN;
+    uint8_t ERROR;
+};
+```
+
+---
+
+## ✅ Bon choix (union)
+
+```c
+typedef union {
+    uint8_t state;
+    struct {
+        uint8_t IDLE  : 1;
+        uint8_t RUN   : 1;
+        uint8_t ERROR : 1;
+    } bits;
+} SystemState_t;
+```
+
+✔️ un seul état actif
+✔️ mémoire optimisée
+
+---
+
+# 7️⃣ Tableau comparatif FINAL 🧠
+
+| Situation                       | Choix            |
+| ------------------------------- | ---------------- |
+| Plusieurs valeurs en même temps | `struct`         |
+| Une seule valeur valide         | `union`          |
+| Données indépendantes           | `struct`         |
+| Même donnée, formats différents | `union`          |
+| Registres STM32                 | `union + struct` |
+| Capteurs multiples              | `struct`         |
+| Protocoles                      | `union`          |
+
+###
+🎯 Le PROBLÈME à résoudre
+
+Sur un PIC 8-bit :
+
+Le résultat de l’ADC fait 10 bits
+
+Mais le MCU est 8 bits
+
+Donc le résultat est stocké dans DEUX registres :
+
+ADRESH → partie haute
+
+ADRESL → partie basse
+
+👉 Toi, tu veux une seule variable 16 bits pour utiliser la valeur facilement.
+
+🧠 La SOLUTION : union + struct
+
+On utilise :
+
+struct → pour accéder aux 2 octets séparément
+
+union → pour voir ces 2 octets comme un seul entier 16 bits
+1️⃣ Pourquoi une union ici ?
+
+👉 Parce que tous les membres partagent la même mémoire.
+
+Cela veut dire que :
+
+Mémoire (16 bits)
+┌──────────────┐
+│ High │ Low   │
+└──────────────┘
+
+
+u16ADRead → voit les 16 bits d’un coup
+
+u8ADReadLow et u8ADReadHigh → voient les mêmes bits, mais séparés
+
+🔥 C’est exactement ce qu’on veut.
+
+2️⃣ Pourquoi un struct à l’intérieur ?
+
+👉 Parce que les registres ADC sont séparés :
+
+ADRESH → octet haut
+ADRESL → octet bas
+
+
+Donc on a besoin de deux variables distinctes pour les copier.
+
+📥 Chargement des registres ADC
+UNION_ADRead.STRUCT_ADReadMembers.u8ADReadHigh = ADRESH;
+UNION_ADRead.STRUCT_ADReadMembers.u8ADReadLow  = ADRESL;
+
+
+👉 Ici :
+
+Tu copies ADRESH dans l’octet haut
+
+Tu copies ADRESL dans l’octet bas
+
+⚠️ Très important : l’ordre compte !
+
+🧩 Ce qui se passe en mémoire (visualisation)
+
+Supposons :
+
+ADRESH = 0x02;
+ADRESL = 0xAB;
+
+
+Mémoire de la union :
+
+Adresse basse → u8ADReadLow  = 0xAB
+Adresse haute → u8ADReadHigh = 0x02
+
+
+Donc :
+
+u16ADRead = 0x02AB;
+
+
+🎉 Résultat ADC correct !
+
+✅ Pourquoi u16ADRead contient la valeur complète ?
+
+Parce que :
+
+union → même mémoire
+
+struct → découpe la mémoire
+
+unsigned int → relit la mémoire en 16 bits
+
+👉 Aucune copie supplémentaire
+👉 Très rapide
+👉 Très efficace en MCU 8-bit
+
+🟢 Pourquoi c’est un BON choix ici ?
+Besoin	Solution
+ADC sur 2 registres	struct
+Valeur complète 16 bits	unsigned int
+Même mémoire	union
+Performance	⭐⭐⭐⭐⭐
+Lisibilité	⭐⭐⭐⭐
